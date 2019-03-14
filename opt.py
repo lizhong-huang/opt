@@ -1,7 +1,9 @@
 #!/home/lizhong/.virtualenvs/opt/bin/python3
 
+import datetime
 import sys
 import getopt
+import json
 import requests
 
 baseurl="https://omnipoints-api-dev.azurewebsites.net"
@@ -74,8 +76,18 @@ def addpoints(mid, did, points):
             "tt" : 3,
             "fp" : 1 
             }
+     if os.path.is_file(".optaccesstoken"): 
+          with open(".optaccesstoken", "r") as f:
+               parameters = f.read()
+          tokenparameter = json.load(parameters)
+          if datetime.now() > tokenparameter["expiresOn"]:
+               print("Accesstoken exipred. Please rerun auth.py first")
+               sys.exit(2)
+     else:
+          print("Cannot find .optaccesstoken file. Please run auth.py first")
+          sys.exit(2)
     _headers = {
-            "Authorization" : "Bearer xxxxxxxxxxxx",
+            "Authorization" : tokenparameter["tokenType"] + " " + tokenparameter["accessToken"]
             "Content-Type": "application/json; charset=utf-8"
             }
 
