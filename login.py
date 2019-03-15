@@ -1,77 +1,61 @@
 #!/home/lizhong/.virtualenvs/opt/bin/python3
-
-import getopt
-import sys
+{
+    "resource": "11be82b8-af00-4d73-8bcd-ed50570b08cd",
+    "tenant" : "omnipoint.onmicrosoft.com",
+    "authorityHostUrl" : "https://login.microsoftonline.com",
+    "clientId" : "11be82b8-af00-4d73-8bcd-ed50570b08cd",
+    "clientSecret" : "rrnsoJOT6]tdSCJP3945}(!"
+ }
 import json
-import urllib
-#import urllib2
-#import re
+import logging
+import os
+import sys
+import adal
 
-def printUsage():
-  print('auth.py -u <username> -p <password> -a <authority> -r <resource> -c <clientId>')
 
-def main(argv):
-  try:
-    options, args = getopt.getopt(argv, 'hu:p:a:r:c:')
-  except getopt.GetoptError:
-    printUsage()
-    sys.exit(-1)
+def turn_on_logging():
+    logging.basicConfig(level=logging.DEBUG)
 
-  username = ''
-  password = ''
-  authority = ''
-  resource = ''
-  clientId = ''
+    #or,
+    #handler = logging.StreamHandler()
+    #adal.set_logging_options({
+    #    'level': 'DEBUG',
+    #    'handler': handler
+    #})
 
-  for option, arg in options:
-    if option == '-h':
-      printUsage()
-      sys.exit()
-    elif option == '-u':
-      username = arg
-    elif option == '-p':
-      password = arg
-    elif option == '-a':
-      authority = arg
-    elif option == '-r':
-      resource = arg
-    elif option == '-c':
-      clientId = arg
+    #handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
 
-  if username == '' or password == '' or authority == '' or resource == '' or clientId == '':
-    printUsage()
-    sys.exit(-1)
+parameters_file = (".optauthparameter" if os.path.isfile(".optauthparameter") else
+                   os.environ.get('ADAL_SAMPLE_PARAMETERS_FILE'))
 
-  # Find everything after the last '/' and replace it with 'token'
-  if not authority.endswith('token'):
-    regex = re.compile('^(.*[\/])')
-    match = regex.match(authority)
-    authority = match.group()
-    authority = authority + 'token'
+if parameters_file:
+    with open(parameters_file, 'r') as f:
+        parameters = f.read()
+    sample_parameters = json.loads(parameters)
+else:
+    raise ValueError('Please provide parameter file with account information.')
 
-  # Build REST call
-  headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'application/json'
-  }
+authority_url = (sample_parameters['authorityHostUrl'] + '/' +
+                 sample_parameters['tenant'])
 
-  params = {
-    'resource': resource,
-    'client_id': clientId,
-    'grant_type': 'password',
-    'username': username,
-    'password': password
-  }
+GRAPH_RESOURCE = '00000002-0000-0000-c000-000000000000'
 
-  req = urllib2.Request(
-    url = authority,
-    headers = headers,
-    data = urllib.urlencode(params))
+RESOURCE = sample_parameters.get('resource', GRAPH_RESOURCE)
 
-  f = urllib2.urlopen(req)
-  response = f.read()
-  f.close()
-  sys.stdout.write(json.loads(response)['access_token'])
+#uncomment for verbose log
+#turn_on_logging()
 
-if __name__ == '__main__':
-  main(sys.argv[1:])
+### Main logic begins
+context = adal.AuthenticationContext(
+    authority_url, validate_authority=sample_parameters['tenant'] != 'adfs',
+    )
+
+token = context.acquire_token_with_client_credentials(
+    RESOURCE,
+    sample_parameters['clientId'],
+    sample_parameters['clientSecret'])
+
+### Main logic ends
+
+file = open(".optaccesstoken", "w")
+file.write(json.dumps(token, indent=2))
